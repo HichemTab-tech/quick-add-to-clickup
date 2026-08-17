@@ -4,6 +4,7 @@
   "short_name": "Quick ClickUp",
   "version": "0.1.2",
   "description": "Create ClickUp tasks instantly from configurable browser context-menu actions.",
+  "homepage_url": "https://github.com/HichemTab-tech/quick-add-to-clickup",
   "minimum_chrome_version": "123",
   "incognito": "not_allowed",
   "permissions": [
