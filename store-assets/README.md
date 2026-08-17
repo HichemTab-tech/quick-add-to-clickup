@@ -30,6 +30,7 @@ Capture it now. Organize it in ClickUp. Keep moving.
 - `store-icon-128x128.png`: required store icon
 - `small-promo-tile-440x280.png`: optional small promotional tile
 - `marquee-promo-tile-1400x560.png`: optional marquee promotional tile
+- `promo-tile-1280x640.png`: 1280×640 promotional banner
 
 ## Required screenshot
 
