@@ -3,9 +3,16 @@ import path from "node:path";
 
 const root = process.cwd();
 const manifest = JSON.parse(await readFile(path.join(root, "manifest.json"), "utf8"));
+const packageMetadata = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
 
 if (manifest.manifest_version !== 3) {
   throw new Error("manifest.json must use Manifest V3.");
+}
+
+if (manifest.version !== packageMetadata.version) {
+  throw new Error(
+    `Version mismatch: manifest.json is ${manifest.version}, package.json is ${packageMetadata.version}.`,
+  );
 }
 
 const referencedFiles = [

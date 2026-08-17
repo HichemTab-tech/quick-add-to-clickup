@@ -1,5 +1,7 @@
 # Quick Add to ClickUp
 
+[![CI](https://github.com/HichemTab-tech/quick-add-to-clickup/actions/workflows/ci.yml/badge.svg)](https://github.com/HichemTab-tech/quick-add-to-clickup/actions/workflows/ci.yml)
+
 Create ClickUp tasks instantly from selected text, links, images, or any webpage using configurable Chrome context-menu actions.
 
 ## Features
@@ -35,7 +37,22 @@ There is no build step or runtime dependency.
 
 ```bash
 npm run check
+npm run package
 ```
+
+## CI/CD
+
+GitHub Actions validates and packages every push to `master` and every pull request. Publishing a GitHub Release uploads the matching package to the Chrome Web Store and submits it for review. The release tag must match `manifest.json` (for example, `v0.1.2`).
+
+Configure these repository secrets before publishing:
+
+- `CWS_CLIENT_ID`
+- `CWS_CLIENT_SECRET`
+- `CWS_REFRESH_TOKEN`
+- `CWS_PUBLISHER_ID`
+- `CWS_EXTENSION_ID`
+
+The release workflow can also be run manually from GitHub Actions. It uses the [Chrome Web Store API v2](https://developer.chrome.com/docs/webstore/api/reference/rest) and requires OAuth credentials with the `chromewebstore` scope.
 
 Read the [Privacy Policy](PRIVACY.md). Source available at [HichemTab-tech/quick-add-to-clickup](https://github.com/HichemTab-tech/quick-add-to-clickup).
 

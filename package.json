@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node --test",
     "check:syntax": "node --check background.js && node --check options.js && node --check lib/clickup.js && node --check lib/config.js && node --check lib/storage.js && node --check lib/templates.js",
-    "check": "npm run check:syntax && npm test && node scripts/validate-extension.mjs && node scripts/smoke-background.mjs"
+    "check": "npm run check:syntax && npm test && node scripts/validate-extension.mjs && node scripts/smoke-background.mjs",
+    "package": "npm run check && bash scripts/package-extension.sh"
   },
   "engines": {
     "node": ">=22"

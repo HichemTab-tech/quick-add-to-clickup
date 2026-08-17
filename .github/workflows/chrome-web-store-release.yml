@@ -1,0 +1,184 @@
+name: Publish Chrome Web Store Release
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chrome-web-store-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NODE_VERSION: '24'
+      ITEM_NAME: publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}
+      CWS_PUBLISH_TYPE: DEFAULT_PUBLISH
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+
+      - name: Verify release configuration
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+          CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+        run: |
+          for secret_name in CWS_CLIENT_ID CWS_CLIENT_SECRET CWS_REFRESH_TOKEN CWS_PUBLISHER_ID CWS_EXTENSION_ID; do
+            if [ -z "${!secret_name}" ]; then
+              echo "Missing required GitHub Actions secret: $secret_name"
+              exit 1
+            fi
+          done
+
+          manifest_version=$(node -e "console.log(JSON.parse(require('node:fs').readFileSync('manifest.json', 'utf8')).version)")
+          if [ -n "$RELEASE_TAG" ] && [ "${RELEASE_TAG#v}" != "$manifest_version" ]; then
+            echo "Release tag $RELEASE_TAG does not match manifest version $manifest_version"
+            exit 1
+          fi
+
+      - name: Validate and package extension
+        run: |
+          npm run package
+          extension_version=$(node -e "console.log(JSON.parse(require('node:fs').readFileSync('manifest.json', 'utf8')).version)")
+          echo "ZIP_FILE=dist/quick-add-to-clickup-v${extension_version}.zip" >> "$GITHUB_ENV"
+
+      - name: Upload packaged extension artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: chrome-extension-package
+          path: dist/*.zip
+          archive: false
+          if-no-files-found: error
+
+      - name: Exchange refresh token for access token
+        id: auth
+        env:
+          CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+        run: |
+          response=$(curl -sS -X POST https://oauth2.googleapis.com/token \
+            --data-urlencode "client_id=$CLIENT_ID" \
+            --data-urlencode "client_secret=$CLIENT_SECRET" \
+            --data-urlencode "refresh_token=$REFRESH_TOKEN" \
+            --data-urlencode "grant_type=refresh_token" \
+            -w "\n%{http_code}")
+
+          http_status=$(echo "$response" | tail -n 1)
+          response_body=$(echo "$response" | sed '$d')
+          if [ "$http_status" != "200" ]; then
+            echo "Unable to obtain a Chrome Web Store access token (HTTP $http_status)"
+            echo "$response_body"
+            exit 1
+          fi
+
+          access_token=$(echo "$response_body" | jq -er '.access_token')
+          echo "::add-mask::$access_token"
+          echo "access_token=$access_token" >> "$GITHUB_OUTPUT"
+
+      - name: Upload package to Chrome Web Store
+        id: upload
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          response=$(curl -sS \
+            -X POST \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "x-goog-api-version: 2" \
+            -T "$ZIP_FILE" \
+            "https://chromewebstore.googleapis.com/upload/v2/${ITEM_NAME}:upload" \
+            -w "\n%{http_code}")
+
+          http_status=$(echo "$response" | tail -n 1)
+          response_body=$(echo "$response" | sed '$d')
+          echo "$response_body"
+          if [ "$http_status" != "200" ]; then
+            echo "Chrome Web Store upload failed (HTTP $http_status)"
+            exit 1
+          fi
+
+          upload_state=$(echo "$response_body" | jq -er '.uploadState')
+          if [ "$upload_state" = "FAILED" ]; then
+            exit 1
+          fi
+          echo "upload_state=$upload_state" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for upload processing
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          INITIAL_UPLOAD_STATE: ${{ steps.upload.outputs.upload_state }}
+        run: |
+          if [ "$INITIAL_UPLOAD_STATE" = "SUCCEEDED" ]; then
+            exit 0
+          fi
+
+          for attempt in $(seq 1 18); do
+            response=$(curl -sS \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              -H "x-goog-api-version: 2" \
+              "https://chromewebstore.googleapis.com/v2/${ITEM_NAME}:fetchStatus" \
+              -w "\n%{http_code}")
+
+            http_status=$(echo "$response" | tail -n 1)
+            response_body=$(echo "$response" | sed '$d')
+            echo "$response_body"
+            if [ "$http_status" != "200" ]; then
+              echo "Chrome Web Store status check failed (HTTP $http_status)"
+              exit 1
+            fi
+
+            upload_state=$(echo "$response_body" | jq -r '.lastAsyncUploadState // "UPLOAD_STATE_UNSPECIFIED"')
+            if [ "$upload_state" = "SUCCEEDED" ]; then
+              exit 0
+            fi
+            if [ "$upload_state" = "FAILED" ] || [ "$upload_state" = "NOT_FOUND" ]; then
+              exit 1
+            fi
+            sleep 10
+          done
+
+          echo "Timed out waiting for Chrome Web Store upload processing"
+          exit 1
+
+      - name: Submit release for publishing
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          response=$(curl -sS \
+            -X POST \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -H "x-goog-api-version: 2" \
+            -d "{\"publishType\":\"${CWS_PUBLISH_TYPE}\"}" \
+            "https://chromewebstore.googleapis.com/v2/${ITEM_NAME}:publish" \
+            -w "\n%{http_code}")
+
+          http_status=$(echo "$response" | tail -n 1)
+          response_body=$(echo "$response" | sed '$d')
+          echo "$response_body"
+          if [ "$http_status" != "200" ]; then
+            echo "Chrome Web Store publish failed (HTTP $http_status)"
+            exit 1
+          fi
+
+          state=$(echo "$response_body" | jq -er '.state')
+          if [ "$state" = "REJECTED" ] || [ "$state" = "CANCELLED" ]; then
+            exit 1
+          fi
