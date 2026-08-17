@@ -39,4 +39,6 @@ npm run check
 
 Read the [Privacy Policy](PRIVACY.md). Source available at [HichemTab-tech/quick-add-to-clickup](https://github.com/HichemTab-tech/quick-add-to-clickup).
 
+Licensed under the [MIT License](LICENSE).
+
 Built by [HichemTab-tech](https://github.com/HichemTab-tech).
