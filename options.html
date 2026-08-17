@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quick Add to ClickUp</title>
+    <link rel="stylesheet" href="options.css">
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero__inner">
+        <img class="hero__logo" src="assets/icon-128.png" alt="">
+        <div>
+          <p class="eyebrow">Chrome extension</p>
+          <h1>Quick Add to ClickUp</h1>
+          <p class="hero__copy">Turn selected text, links, and pages into tasks without breaking your flow.</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel connection-panel" aria-labelledby="connection-heading">
+        <div class="section-heading">
+          <div>
+            <p class="step">01 · Connection</p>
+            <h2 id="connection-heading">Connect your ClickUp account</h2>
+          </div>
+          <span id="connection-state" class="status-pill status-pill--neutral">Not checked</span>
+        </div>
+
+        <p class="section-copy">
+          Use a personal API token. It stays in this browser profile and is never synced.
+        </p>
+
+        <div class="token-row">
+          <label class="field field--grow">
+            <span>Personal API token</span>
+            <span class="input-with-button">
+              <input id="api-token" type="password" autocomplete="off" spellcheck="false" placeholder="pk_…">
+              <button id="toggle-token" class="icon-button" type="button" aria-label="Show token">Show</button>
+            </span>
+          </label>
+          <button id="connect-button" class="button button--primary" type="button">Connect &amp; load lists</button>
+          <button id="forget-token" class="button button--quiet" type="button">Forget token</button>
+        </div>
+
+        <p class="security-note">
+          The token is limited to trusted extension pages. Website scripts cannot read it.
+        </p>
+        <p id="connection-error" class="connection-error" role="alert" hidden></p>
+      </section>
+
+      <section class="panel" aria-labelledby="actions-heading">
+        <div class="section-heading">
+          <div>
+            <p class="step">02 · Quick actions</p>
+            <h2 id="actions-heading">Choose what appears in the context menu</h2>
+          </div>
+          <button id="add-action" class="button button--secondary" type="button">+ Add action</button>
+        </div>
+
+        <p class="section-copy">
+          One enabled action appears directly in Chrome’s menu. Multiple actions appear under a “Quick Add to ClickUp” submenu.
+        </p>
+
+        <div id="actions" class="actions"></div>
+      </section>
+
+      <section class="panel reference" aria-labelledby="templates-heading">
+        <div class="section-heading">
+          <div>
+            <p class="step">03 · Templates</p>
+            <h2 id="templates-heading">Available page variables</h2>
+          </div>
+        </div>
+        <div class="chips" aria-label="Template variables">
+          <code>{{selection}}</code>
+          <code>{{linkUrl}}</code>
+          <code>{{pageUrl}}</code>
+          <code>{{pageTitle}}</code>
+          <code>{{imageUrl}}</code>
+          <code>{{mediaUrl}}</code>
+          <code>{{date}}</code>
+          <code>{{datetime}}</code>
+        </div>
+        <p class="section-copy">
+          Use <code>{{selection || linkUrl || pageTitle}}</code> to choose the first available value.
+        </p>
+      </section>
+    </main>
+
+    <footer class="save-bar">
+      <p id="save-status" class="save-status" role="status" aria-live="polite"></p>
+      <button id="save-button" class="button button--primary button--large" type="button">Save changes</button>
+    </footer>
+
+    <template id="action-template">
+      <article class="action-card">
+        <div class="action-card__header">
+          <label class="toggle">
+            <input data-field="enabled" type="checkbox">
+            <span class="toggle__track" aria-hidden="true"></span>
+            <span>Enabled</span>
+          </label>
+          <div class="action-card__tools">
+            <button class="icon-button" data-action="up" type="button" aria-label="Move action up">↑</button>
+            <button class="icon-button" data-action="down" type="button" aria-label="Move action down">↓</button>
+            <button class="icon-button icon-button--danger" data-action="remove" type="button">Remove</button>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <label class="field">
+            <span>Menu label</span>
+            <input data-field="label" type="text" maxlength="80" placeholder="Add to Inbox" required>
+          </label>
+
+          <label class="field">
+            <span>Choose a ClickUp list</span>
+            <select data-field="listSelect">
+              <option value="">Connect to load your lists</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>List ID <small>filled automatically, or paste one</small></span>
+            <input data-field="listId" type="text" inputmode="numeric" placeholder="901234567890" required>
+          </label>
+
+          <label class="field field--wide">
+            <span>Task title template</span>
+            <input data-field="titleTemplate" type="text" placeholder="{{selection || pageTitle}}" required>
+          </label>
+
+          <label class="field field--wide">
+            <span>Description template</span>
+            <textarea data-field="descriptionTemplate" rows="4" placeholder="Source: {{pageUrl}}"></textarea>
+          </label>
+
+          <fieldset class="field field--wide contexts">
+            <legend>Show this action when right-clicking</legend>
+            <label><input data-context="page" type="checkbox"> Page</label>
+            <label><input data-context="selection" type="checkbox"> Selected text</label>
+            <label><input data-context="link" type="checkbox"> Link</label>
+            <label><input data-context="image" type="checkbox"> Image</label>
+          </fieldset>
+
+          <label class="field">
+            <span>Priority</span>
+            <select data-field="priority">
+              <option value="">List default</option>
+              <option value="urgent">Urgent</option>
+              <option value="high">High</option>
+              <option value="normal">Normal</option>
+              <option value="low">Low</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Status <small>optional, exact ClickUp name</small></span>
+            <input data-field="status" type="text" placeholder="to do">
+          </label>
+
+          <label class="field field--wide">
+            <span>Tags <small>optional, comma-separated</small></span>
+            <input data-field="tags" type="text" placeholder="reading, inbox">
+          </label>
+        </div>
+
+        <div class="action-card__footer">
+          <label class="check"><input data-field="assignToMe" type="checkbox"> Assign tasks to me</label>
+          <label class="check"><input data-field="openAfterCreate" type="checkbox"> Open the task after creating it</label>
+        </div>
+      </article>
+    </template>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

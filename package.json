@@ -1,0 +1,15 @@
+{
+  "name": "quick-add-to-clickup",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A configurable Chrome extension for creating ClickUp tasks from the context menu.",
+  "scripts": {
+    "test": "node --test",
+    "check:syntax": "node --check background.js && node --check options.js && node --check lib/clickup.js && node --check lib/config.js && node --check lib/storage.js && node --check lib/templates.js",
+    "check": "npm run check:syntax && npm test && node scripts/validate-extension.mjs && node scripts/smoke-background.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

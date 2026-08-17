@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Quick Add to ClickUp",
+  "short_name": "Quick ClickUp",
+  "version": "0.1.0",
+  "description": "Create ClickUp tasks instantly from configurable browser context-menu actions.",
+  "minimum_chrome_version": "123",
+  "incognito": "not_allowed",
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "notifications",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://api.clickup.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Configure Quick Add to ClickUp",
+    "default_icon": {
+      "16": "assets/icon-16.png",
+      "32": "assets/icon-32.png"
+    }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'"
+  }
+}
