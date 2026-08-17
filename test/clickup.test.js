@@ -51,6 +51,19 @@ test("does not send a content type header on bodyless requests", async () => {
   assert.equal(headers["Content-Type"], undefined);
 });
 
+test("binds fetch to the global scope for WorkerGlobalScope compatibility", async () => {
+  let receiver;
+  async function browserStyleFetch() {
+    receiver = this;
+    return response({ user: { id: 1 } });
+  }
+
+  const client = new ClickUpClient("pk_secret", { fetchImpl: browserStyleFetch });
+  await client.getCurrentUser();
+
+  assert.equal(receiver, globalThis);
+});
+
 test("turns ClickUp error responses into useful errors", async () => {
   const client = new ClickUpClient("pk_secret", {
     fetchImpl: async () => response({ err: "Token invalid", ECODE: "OAUTH_025" }, { status: 401 }),

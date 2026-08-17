@@ -7,6 +7,7 @@ const ACTION_PREFIX = "quick-add-action:";
 const ROOT_MENU_ID = "quick-add-root";
 const CONFIGURE_MENU_ID = "quick-add-configure";
 const NOTIFICATION_LINK_PREFIX = "notificationLink:";
+const CONNECTION_PROTOCOL_VERSION = 2;
 let menuRebuildQueue = Promise.resolve();
 
 function createMenuItem(properties) {
@@ -126,6 +127,7 @@ function serializeError(error) {
     message: error?.message || "Unknown ClickUp error.",
     status: error?.status || 0,
     code: error?.code || "",
+    cause: error?.details?.message || "",
   };
 }
 
@@ -138,7 +140,12 @@ async function inspectClickUpConnection(token) {
     user = response?.user ?? response;
     if (!user?.id) throw new Error("ClickUp authenticated but did not return a user ID.");
   } catch (error) {
-    return { ok: false, stage: "authentication", error: serializeError(error) };
+    return {
+      ok: false,
+      protocolVersion: CONNECTION_PROTOCOL_VERSION,
+      stage: "authentication",
+      error: serializeError(error),
+    };
   }
 
   const safeUser = {
@@ -148,10 +155,16 @@ async function inspectClickUpConnection(token) {
 
   try {
     const lists = await client.discoverLists();
-    return { ok: true, user: safeUser, lists };
+    return {
+      ok: true,
+      protocolVersion: CONNECTION_PROTOCOL_VERSION,
+      user: safeUser,
+      lists,
+    };
   } catch (error) {
     return {
       ok: false,
+      protocolVersion: CONNECTION_PROTOCOL_VERSION,
       stage: "list-discovery",
       user: safeUser,
       error: serializeError(error),
@@ -185,6 +198,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     .then(sendResponse)
     .catch((error) => sendResponse({
       ok: false,
+      protocolVersion: CONNECTION_PROTOCOL_VERSION,
       stage: "extension",
       error: serializeError(error),
     }));

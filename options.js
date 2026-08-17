@@ -3,6 +3,7 @@ import { getSettings, protectLocalStorage, saveSettings } from "./lib/storage.js
 
 const elements = {
   token: document.querySelector("#api-token"),
+  buildVersion: document.querySelector("#build-version"),
   toggleToken: document.querySelector("#toggle-token"),
   connect: document.querySelector("#connect-button"),
   forget: document.querySelector("#forget-token"),
@@ -38,7 +39,8 @@ function formatConnectionError(result) {
     : result?.stage === "list-discovery"
       ? "The token is valid, but ClickUp list loading failed"
       : "The extension could not contact ClickUp";
-  return `${stage}: ${error.message || "Unknown error"}${suffix ? ` (${suffix})` : ""}`;
+  const cause = error.cause ? ` — ${error.cause}` : "";
+  return `${stage}: ${error.message || "Unknown error"}${suffix ? ` (${suffix})` : ""}${cause}`;
 }
 
 function setSaveStatus(message, type = "") {
@@ -234,6 +236,12 @@ elements.connect.addEventListener("click", async () => {
       token,
     });
 
+    if (result?.protocolVersion !== 2) {
+      throw new Error(
+        "The background worker is outdated. Open chrome://extensions and click Reload on Quick Add to ClickUp.",
+      );
+    }
+
     if (!result?.ok) {
       if (result?.user) {
         syncActionsFromDom();
@@ -263,7 +271,11 @@ elements.connect.addEventListener("click", async () => {
   } catch (error) {
     console.error(error);
     setConnectionState("Connection failed", "error");
-    const message = `The extension could not run the connection check: ${error.message || "Unknown error"}`;
+    const rawMessage = error.message || "Unknown error";
+    const needsReload = /receiving end|message port|outdated/i.test(rawMessage);
+    const message = needsReload
+      ? "The extension background worker is outdated. Open chrome://extensions and click Reload on Quick Add to ClickUp."
+      : `The extension could not run the connection check: ${rawMessage}`;
     setConnectionError(message);
     setSaveStatus(message, "error");
   } finally {
@@ -301,6 +313,7 @@ elements.save.addEventListener("click", async () => {
 
 async function start() {
   await protectLocalStorage();
+  elements.buildVersion.textContent = `v${chrome.runtime.getManifest().version}`;
   settings = await getSettings();
   elements.token.value = settings.apiToken;
   if (settings.currentUser) {

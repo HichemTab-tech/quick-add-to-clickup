@@ -46,6 +46,9 @@ globalThis.chrome = {
     onInstalled: event(),
     onStartup: event(),
     async openOptionsPage() {},
+    getManifest() {
+      return { version: "0.1.2" };
+    },
   },
   storage: {
     onChanged: event(),
@@ -115,6 +118,7 @@ const connectionResult = await new Promise((resolve) => {
 });
 
 assert.equal(connectionResult.ok, true);
+assert.equal(connectionResult.protocolVersion, 2);
 assert.equal(connectionResult.user.username, "Test user");
 assert.equal(connectionResult.lists[0].name, "Inbox");
 

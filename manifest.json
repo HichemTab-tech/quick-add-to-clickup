@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Quick Add to ClickUp",
   "short_name": "Quick ClickUp",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Create ClickUp tasks instantly from configurable browser context-menu actions.",
   "minimum_chrome_version": "123",
   "incognito": "not_allowed",
